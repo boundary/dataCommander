@@ -37,7 +37,7 @@ var DataLensCollection = Backbone.Collection.extend({
 
 	shiftInNextDataPoint: function(){
 		var startEpoch = this.state.endEpoch;
-		var endEpoch = d3.time.second.offset(startEpoch, 1);
+		var endEpoch = d3.time.second.offset(startEpoch, 1).getTime();
 		this.state.endEpoch = endEpoch;
 		this.state.startEpoch = d3.time.second.offset(endEpoch, -this.options.timeSpanInSeconds).getTime();
 
@@ -49,7 +49,7 @@ var DataLensCollection = Backbone.Collection.extend({
 
 	_shiftInValues: function(models){
 		this.forEach(function(model, i){
-			var newValues = models[i].values;
+			var newValues = models[i].values.slice(1);
 			var values = model.get('values');
 			values = values.slice(newValues.length);
 			values = values.concat(newValues);
