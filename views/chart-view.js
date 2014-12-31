@@ -5,7 +5,7 @@ var ChartView = Backbone.View.extend({
 		this.$el.html(template);
 
 		this.dataLens = options.dataLens;
-
+		this.colors = options.colors;
 		this.chart = null;
 
 		this.initializeChart();
@@ -27,7 +27,11 @@ var ChartView = Backbone.View.extend({
 	},
 
 	renderChart: function(collection){
-		this.chart.setData(collection.toJSON());
+		var dataset = collection.toJSON().map(_.bind(function(d){
+			d.color = this.colors[d.name] || 'silver';
+			return d;
+		}, this));
+		this.chart.setData(dataset);
 	},
 
 	startLiveData: function(){
@@ -42,7 +46,16 @@ var ChartView = Backbone.View.extend({
 		this.dataLens.getLatestDataWindow();
 	},
 
+	setPreviousData: function(){
+		this.dataLens.getPreviousDataWindow();
+	},
+
+	setNextData: function(){
+		this.dataLens.getNextDataWindow();
+	},
+
 	setDataFromDateRange: function(starDate, endDate){
+		this.dataLens.stopPolling();
 		this.dataLens.getData(new Date(starDate), new Date(endDate), 1);
 	}
 

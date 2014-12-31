@@ -50,4 +50,8 @@ describe('Data stub', function() {
 		}, 1000);
 	});
 
+	it('gives the latest and earliest epoch', function(){
+		expect(dataStubCollection.getEarliestEpoch()).to.be.below(dataStubCollection.getLatestEpoch());
+	});
+
 });

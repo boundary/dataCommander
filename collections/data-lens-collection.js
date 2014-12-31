@@ -28,6 +28,8 @@ var DataLensCollection = Backbone.Collection.extend({
 
 	startPolling: function(_interval){
 		var interval = _interval || 1000;
+		this.stopPolling();
+		this.getLatestDataWindow();
 		this.pollingTimer = setInterval(_.bind(this.shiftInNextDataPoint, this), interval);
 	},
 
@@ -59,8 +61,22 @@ var DataLensCollection = Backbone.Collection.extend({
 	},
 
 	getLatestDataWindow: function(){
-		var endEpoch = d3.time.second(new Date()).getTime();
+		this.stopPolling();
+		var endEpoch = this.dataQueryManager.getLatestEpoch();
 		var startEpoch = d3.time.second.offset(endEpoch, -this.options.timeSpanInSeconds).getTime();
+		this.state.startEpoch = startEpoch;
+		this.state.endEpoch = endEpoch;
+
+		this._queryData(startEpoch, endEpoch)
+			.done(_.bind(function(models){
+				this.reset(models);
+			}, this));
+	},
+
+	getEarliestDataWindow: function(){
+		this.stopPolling();
+		var startEpoch = this.dataQueryManager.getEarliestEpoch();
+		var endEpoch = d3.time.second.offset(startEpoch, this.options.timeSpanInSeconds).getTime();
 		this.state.startEpoch = startEpoch;
 		this.state.endEpoch = endEpoch;
 
@@ -71,8 +87,13 @@ var DataLensCollection = Backbone.Collection.extend({
 	},
 
 	getPreviousDataWindow: function(){
+		this.stopPolling();
 		var endEpoch = this.state.startEpoch;
 		var startEpoch = d3.time.second.offset(endEpoch, -this.options.timeSpanInSeconds).getTime();
+		if(startEpoch <= this.dataQueryManager.getEarliestEpoch()){
+			this.getEarliestDataWindow();
+			return;
+		}
 		this.state.startEpoch = startEpoch;
 		this.state.endEpoch = endEpoch;
 
@@ -83,8 +104,13 @@ var DataLensCollection = Backbone.Collection.extend({
 	},
 
 	getNextDataWindow: function(){
+		this.stopPolling();
 		var startEpoch = this.state.endEpoch;
 		var endEpoch = d3.time.second.offset(startEpoch, this.options.timeSpanInSeconds).getTime();
+		if(endEpoch >= this.dataQueryManager.getLatestEpoch()){
+			this.getLatestDataWindow();
+			return;
+		}
 		this.state.startEpoch = startEpoch;
 		this.state.endEpoch = endEpoch;
 

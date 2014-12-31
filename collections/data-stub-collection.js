@@ -35,8 +35,11 @@ var DataStubCollection = Backbone.Collection.extend({
 		return dataset;
 	},
 
-	getData: function(startEpoch, endEpoch){
-		var latestEpoch = this._getLatestEpoch();
+	getData: function(_startEpoch, _endEpoch){
+		var latestEpoch = this._getLatestEpochInDB();
+		var now = new Date().setMilliseconds(0);
+		var endEpoch = (_endEpoch <= now)? _endEpoch : now;
+		var startEpoch = (_startEpoch < endEpoch)? _startEpoch : endEpoch;
 		if(!this.fakeDB){
 			this.fakeDB = this._generateFakeData(startEpoch, endEpoch);
 		}
@@ -63,8 +66,16 @@ var DataStubCollection = Backbone.Collection.extend({
 		return dfd.promise();
 	},
 
-	_getLatestEpoch: function(){
+	_getLatestEpochInDB: function(){
 		return (!this.fakeDB)? null : this.fakeDB[0].values[this.fakeDB[0].values.length-1].x;
+	},
+
+	getLatestEpoch: function(){
+		return new Date().setMilliseconds(0);
+	},
+
+	getEarliestEpoch: function(){
+		return (!this.fakeDB)? null : this.fakeDB[0].values[0].x;
 	}
 
 });

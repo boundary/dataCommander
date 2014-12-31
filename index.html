@@ -16,21 +16,40 @@
 	<link rel="stylesheet" type="text/css" href="style1.css">
 	<title></title>
 	<style>
+		div{
+			padding-bottom: 5px;
+		}
 		.timeline-chart{
 			float: left;
 			width: 800px;
 			height: 100px;
 		}
 		.main-chart{
-			float: left;
+			margin-top: 120px;
 			width: 500px;
 			height: 300px;
+		}
+		button{
+			border: 1px solid silver;
+			background-color: white;
+			outline : none;
+		}
+		button:hover{
+			background-color: silver;
+		}
+		button.play{
+			background-color: lime;
 		}
 	</style>
 </head>
 <body>
 
 <div class="dashboard">
+	<div class="playback">
+		<button class="previous">Previous</button>
+		<button class="live play">Live</button>
+		<button class="next">next</button>
+	</div>
 	<div class="timeline-chart"></div>
 	<div class="main-chart"></div>
 </div>
@@ -44,56 +63,89 @@
 // singleton query manager and data cache
 var now = new Date().setMilliseconds(0);
 var dataStubOptions = {
-	startEpoch: d3.time.second.offset(now, -10).getTime(),
+	startEpoch: d3.time.second.offset(now, -500).getTime(),
 	endEpoch: now
 };
 var dataStubCollection = new DataStubCollection(null, dataStubOptions);
 
 var dataLensOptions = {
-	timeSpanInSeconds: 10
+	timeSpanInSeconds: 75
 };
-var dataLens = new DataLensCollection(null, dataStubCollection, dataLensOptions);
+
+var sourceColors = {
+	'source-0': 'orange',
+	'source-1': 'skyblue',
+	'source-2': 'lime'
+};
+
+var $playback = $('.playback');
+var $playbackLive = $('.playback .live');
 
 // main chart
-var mainContainer = $('.dashboard .main-chart');
+var $mainContainer = $('.dashboard .main-chart');
 
 var mainChartModel = new ChartModel({
 		name: 'Main Chart',
-		width: mainContainer.width(),
-		height: mainContainer.height()
+		width: $mainContainer.width(),
+		height: $mainContainer.height()
 	});
 
+var mainChartDataLens = new DataLensCollection(null, dataStubCollection, dataLensOptions);
 var mainChartView = new ChartView({
 		model: mainChartModel,
-		el: mainContainer,
-		dataLens: dataLens
+		el: $mainContainer,
+		dataLens: mainChartDataLens,
+		colors: sourceColors
 	});
 
 mainChartView.setLatestData();
 mainChartView.startLiveData();
 
-//var timelineContainer = $('.dashboard .timeline-chart');
-//
-//var timelineChartModel = new ChartModel({
-//		name: 'Timeline Chart',
-//		width: timelineContainer.width(),
-//		height: timelineContainer.height(),
-//		useBrush: true,
-//		timeSpanInSeconds: 10,
-//		resolutionInSeconds: 1
-//	});
-
 // timeline chart
-//var timelineChartView = new ChartView({
-//		model: timelineChartModel,
-//		el: timelineContainer
-//	})
-//	.on('brushChange', function(dateExtent){
-//			mainChartView.stopLiveData();
-//			mainChartView.setDataFromDateRange(dateExtent[0], dateExtent[1]);
-//	});
-//
-//timelineChartView.setLatestData();
+var $timelineContainer = $('.dashboard .timeline-chart');
+
+var timelineChartModel = new ChartModel({
+		name: 'Timeline Chart',
+		width: $timelineContainer.width(),
+		height: $timelineContainer.height(),
+		useBrush: true
+	});
+
+var timelineDataLens = new DataLensCollection(null, dataStubCollection, dataLensOptions);
+var timelineChartView = new ChartView({
+		model: timelineChartModel,
+		el: $timelineContainer,
+		dataLens: timelineDataLens,
+		colors: sourceColors
+	})
+	.on('brushChange', function(dateExtent){
+		mainChartView.setDataFromDateRange(dateExtent[0], dateExtent[1]);
+		$playbackLive.toggleClass('play', false);
+	});
+
+timelineChartView.setLatestData();
+
+//playback
+$playbackLive.on('click', function(){
+	var isLive = $playbackLive.hasClass('play');
+	if(isLive){
+		mainChartView.stopLiveData();
+	}
+	else{
+		mainChartView.startLiveData();
+	}
+	$playbackLive.toggleClass('play', !isLive);
+});
+
+$playback.find('.previous').on('click', function(){
+	mainChartView.setPreviousData();
+	$playbackLive.toggleClass('play', false);
+});
+
+$playback.find('.next').on('click', function(){
+	mainChartView.setNextData();
+	$playbackLive.toggleClass('play', false);
+});
 
 </script>
 
