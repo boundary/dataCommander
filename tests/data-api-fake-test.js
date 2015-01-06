@@ -2,7 +2,7 @@ var expect = chai.expect;
 
 describe('Data stub', function() {
 
-	var dataStubCollection;
+	var api;
 	var options;
 	before(function() {
 		var now = new Date().setMilliseconds(0);
@@ -10,11 +10,11 @@ describe('Data stub', function() {
 			startEpoch: d3.time.second.offset(now, -10).getTime(),
 			endEpoch: now
 		};
-		dataStubCollection = new DataStubCollection(null, options);
+		api = dataAPIFake(options);
 	});
 
 	it('provides a dataset', function(done){
-		dataStubCollection.getData(options.startEpoch, options.endEpoch)
+		api.getData(options.startEpoch, options.endEpoch)
 			.done(function(dataset){
 				expect(dataset).not.to.be.null;
 				expect(dataset[0].values[0].x).not.to.be.null;
@@ -28,9 +28,9 @@ describe('Data stub', function() {
 		var startEpoch = d3.time.second.offset(now, -5).getTime();
 		var endEpoch = d3.time.second.offset(now, -2).getTime();
 
-		dataStubCollection.getData(startEpoch, endEpoch)
-			.done(function(data){
-				var firstValues = data[0].values;
+		api.getData(startEpoch, endEpoch)
+			.done(function(dataset){
+				var firstValues = dataset[0].values;
 				expect(firstValues[0].x).to.equal(startEpoch);
 				expect(firstValues[firstValues.length-1].x).to.equal(endEpoch);
 				done();
@@ -40,7 +40,7 @@ describe('Data stub', function() {
 	it.skip('continuously generates points', function(done){
 		setTimeout(function(){
 			var now = new Date().setMilliseconds(0);
-			dataStubCollection.getData(options.startEpoch, now)
+			api.getData(options.startEpoch, now)
 				.done(function(dataset){
 					var lastEpochInDataset = dataset[0].values[dataset[0].values.length-1].x;
 					expect(now).not.to.equal(options.endEpoch);
@@ -51,7 +51,7 @@ describe('Data stub', function() {
 	});
 
 	it('gives the latest and earliest epoch', function(){
-		expect(dataStubCollection.getEarliestEpoch()).to.be.below(dataStubCollection.getLatestEpoch());
+		expect(api.getEarliestEpoch()).to.be.below(api.getLatestEpoch());
 	});
 
 });

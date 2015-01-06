@@ -7,21 +7,21 @@
 	<script type="text/javascript" src="../libs/underscore.js"></script>
 	<script type="text/javascript" src="../libs/backbone.js"></script>
 	<script type="text/javascript" src="../libs/d3.js"></script>
-	<script type="text/javascript" src="../models/chart-model.js"></script>
-	<script type="text/javascript" src="../models/data-model.js"></script>
-	<script type="text/javascript" src="../collections/data-stub-collection.js"></script>
-	<!--<script type="text/javascript" src="../collections/data-cache-collection.js"></script>-->
-	<script type="text/javascript" src="../collections/data-lens-collection.js"></script>
+	<script type="text/javascript" src="../collections/data-api-fake.js"></script>
+	<script type="text/javascript" src="../collections/data-cache.js"></script>
+	<script type="text/javascript" src="../collections/data-query.js"></script>
 	<link rel="stylesheet" href="mocha/mocha.css" />
   </head>
   <body>
 	<div id="mocha"></div>
 	<div id="fixture" style="height:300px"></div>
 	<script src="mocha/chai.js"></script>
+	<script src="mocha/sinon-1.12.2.js"></script>
 	<script src="mocha/mocha.js"></script>
 	<script>mocha.setup('bdd')</script>
-	<script src="data-stub-test.js"></script>
-	<script src="data-lens-test.js"></script>
+	<script src="data-api-fake-test.js"></script>
+	<script src="data-query-test.js"></script>
+	<script src="data-cache-test.js"></script>
 	<script>
 	  mocha.run();
 	</script>

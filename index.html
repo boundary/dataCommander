@@ -7,10 +7,9 @@
 	<script type="text/javascript" src="libs/backbone.js"></script>
 	<script type="text/javascript" src="libs/d3.js"></script>
 	<script type="text/javascript" src="models/chart-model.js"></script>
-	<script type="text/javascript" src="models/data-model.js"></script>
-	<script type="text/javascript" src="collections/data-stub-collection.js"></script>
-	<script type="text/javascript" src="collections/data-cache-collection.js"></script>
-	<script type="text/javascript" src="collections/data-lens-collection.js"></script>
+	<script type="text/javascript" src="collections/data-api-fake.js"></script>
+	<script type="text/javascript" src="collections/data-cache.js"></script>
+	<script type="text/javascript" src="collections/data-query.js"></script>
 	<script type="text/javascript" src="components/firespray-0.1.2.js"></script>
 	<script type="text/javascript" src="views/chart-view.js"></script>
 	<link rel="stylesheet" type="text/css" href="style1.css">
@@ -60,15 +59,24 @@
 
 <script type="text/javascript">
 
+	/*
+	 Todo:
+	 -cache
+	 -pan on drag, fetching as needed
+	 -zoom (change time range)
+	 -zoom (change resolution)
+	 */
+
+
 // singleton query manager and data cache
 var now = new Date().setMilliseconds(0);
-var dataStubOptions = {
+var dataAPIOptions = {
 	startEpoch: d3.time.second.offset(now, -500).getTime(),
 	endEpoch: now
 };
-var dataStubCollection = new DataStubCollection(null, dataStubOptions);
+var dataAPI = dataAPIFake(dataAPIOptions);
 
-var dataLensOptions = {
+var dataCacheOptions = {
 	timeSpanInSeconds: 75
 };
 
@@ -90,11 +98,11 @@ var mainChartModel = new ChartModel({
 		height: $mainContainer.height()
 	});
 
-var mainChartDataLens = new DataLensCollection(null, dataStubCollection, dataLensOptions);
+var mainChartDataCache = dataCache(dataAPI, dataCacheOptions);
 var mainChartView = new ChartView({
 		model: mainChartModel,
 		el: $mainContainer,
-		dataLens: mainChartDataLens,
+		dataCache: mainChartDataCache,
 		colors: sourceColors
 	});
 
@@ -111,11 +119,11 @@ var timelineChartModel = new ChartModel({
 		useBrush: true
 	});
 
-var timelineDataLens = new DataLensCollection(null, dataStubCollection, dataLensOptions);
+var timelineDataCache = dataCache(dataAPI, dataCacheOptions);
 var timelineChartView = new ChartView({
 		model: timelineChartModel,
 		el: $timelineContainer,
-		dataLens: timelineDataLens,
+		dataCache: timelineDataCache,
 		colors: sourceColors
 	})
 	.on('brushChange', function(dateExtent){
