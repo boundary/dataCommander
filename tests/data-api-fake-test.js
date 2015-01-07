@@ -4,7 +4,7 @@ describe('Data stub', function() {
 
 	var api;
 	var options;
-	before(function() {
+	beforeEach(function() {
 		var now = new Date().setMilliseconds(0);
 		options = {
 			startEpoch: d3.time.second.offset(now, -10).getTime(),

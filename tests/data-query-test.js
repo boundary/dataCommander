@@ -2,9 +2,9 @@ var expect = chai.expect;
 
 describe('Data query', function() {
 
-	var dataAPI, query;
+	var dataAPI, query, cache;
 	var dataAPIOptions, queryOptions;
-	var view;
+
 	beforeEach(function(){
 		var now = new Date().setMilliseconds(0);
 		dataAPIOptions = {
@@ -13,12 +13,12 @@ describe('Data query', function() {
 		};
 		dataAPI = dataAPIFake(dataAPIOptions);
 
+		cache = dataCache();
+
 		queryOptions = {
 			timeSpanInSeconds: 10
 		};
-		query = dataQuery(dataAPI, queryOptions);
-
-		view = new Backbone.View();
+		query = dataQuery(dataAPI, cache, queryOptions);
 	});
 
 	afterEach(function(){

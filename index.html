@@ -76,9 +76,7 @@ var dataAPIOptions = {
 };
 var dataAPI = dataAPIFake(dataAPIOptions);
 
-var dataCacheOptions = {
-	timeSpanInSeconds: 75
-};
+var cache = dataCache();
 
 var sourceColors = {
 	'source-0': 'orange',
@@ -98,11 +96,15 @@ var mainChartModel = new ChartModel({
 		height: $mainContainer.height()
 	});
 
-var mainChartDataCache = dataCache(dataAPI, dataCacheOptions);
+var queryOptions = {
+	timeSpanInSeconds: 10
+};
+var mainChartDataQuery = dataQuery(dataAPI, cache, queryOptions);
+
 var mainChartView = new ChartView({
 		model: mainChartModel,
 		el: $mainContainer,
-		dataCache: mainChartDataCache,
+		dataQuery: mainChartDataQuery,
 		colors: sourceColors
 	});
 
@@ -119,11 +121,12 @@ var timelineChartModel = new ChartModel({
 		useBrush: true
 	});
 
-var timelineDataCache = dataCache(dataAPI, dataCacheOptions);
+var timelineDataQuery = dataQuery(dataAPI, cache, queryOptions);
+
 var timelineChartView = new ChartView({
 		model: timelineChartModel,
 		el: $timelineContainer,
-		dataCache: timelineDataCache,
+		dataQuery: timelineDataQuery,
 		colors: sourceColors
 	})
 	.on('brushChange', function(dateExtent){

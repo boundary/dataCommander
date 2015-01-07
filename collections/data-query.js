@@ -1,6 +1,7 @@
-var dataQuery = function(_dataAPI, _options){
+var dataQuery = function(_dataAPI, _dataCache, _options){
 
 	var dataAPI = _dataAPI;
+	var dataCache = _dataCache;
 	var options = _options;
 	if(!options.timeSpanInSeconds){
 		options.timeSpanInSeconds = 10;
@@ -21,6 +22,7 @@ var dataQuery = function(_dataAPI, _options){
 			.done(function(dataset){
 				pollingCache = dataset;
 			});
+
 		var that = this;
 		pollingTimer = setInterval(function(){
 			_shiftInNextDataPoint(pollingCache)
@@ -67,7 +69,6 @@ var dataQuery = function(_dataAPI, _options){
 	};
 
 	var getLatestDataWindow = function(){
-		var dfd = new jQuery.Deferred();
 		stopPolling();
 
 		var endEpoch = dataAPI.getLatestEpoch();
@@ -75,16 +76,10 @@ var dataQuery = function(_dataAPI, _options){
 		state.startEpoch = startEpoch;
 		state.endEpoch = endEpoch;
 
-		_queryData(startEpoch, endEpoch)
-			.done(_.bind(function(dataset){
-				dfd.resolve(dataset);
-			}, this));
-
-		return dfd.promise();
+		return getData(startEpoch, endEpoch);
 	};
 
 	var getEarliestDataWindow = function(){
-		var dfd = new jQuery.Deferred();
 		stopPolling();
 
 		var startEpoch = dataAPI.getEarliestEpoch();
@@ -92,16 +87,10 @@ var dataQuery = function(_dataAPI, _options){
 		state.startEpoch = startEpoch;
 		state.endEpoch = endEpoch;
 
-		_queryData(startEpoch, endEpoch)
-			.done(_.bind(function(dataset){
-				dfd.resolve(dataset);
-			}, this));
-
-		return dfd.promise();
+		return getData(startEpoch, endEpoch);
 	};
 
 	var getPreviousDataWindow = function(){
-		var dfd = new jQuery.Deferred();
 		stopPolling();
 
 		var endEpoch = state.startEpoch;
@@ -112,16 +101,10 @@ var dataQuery = function(_dataAPI, _options){
 		state.startEpoch = startEpoch;
 		state.endEpoch = endEpoch;
 
-		_queryData(startEpoch, endEpoch)
-			.done(_.bind(function(dataset){
-				dfd.resolve(dataset);
-			}, this));
-
-		return dfd.promise();
+		return getData(startEpoch, endEpoch);
 	};
 
 	var getNextDataWindow = function(){
-		var dfd = new jQuery.Deferred();
 		stopPolling();
 
 		var startEpoch = state.endEpoch;
@@ -132,12 +115,7 @@ var dataQuery = function(_dataAPI, _options){
 		state.startEpoch = startEpoch;
 		state.endEpoch = endEpoch;
 
-		_queryData(startEpoch, endEpoch)
-			.done(_.bind(function(dataset){
-				dfd.resolve(dataset);
-			}, this));
-
-		return dfd.promise();
+		return getData(startEpoch, endEpoch);
 	};
 
 	var getData = function(startEpoch, endEpoch){

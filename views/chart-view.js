@@ -4,7 +4,7 @@ var ChartView = Backbone.View.extend({
 		var template = _.template( $("#chart-template").html(), {});
 		this.$el.html(template);
 
-		this.dataCache = options.dataCache;
+		this.dataQuery = options.dataQuery;
 		this.colors = options.colors;
 		this.chart = null;
 
@@ -31,7 +31,7 @@ var ChartView = Backbone.View.extend({
 	},
 
 	startLiveData: function(){
-		this.dataCache.startPolling()
+		this.dataQuery.startPolling()
 			.off('new-data')
 			.on('new-data', _.bind(function(e, dataset){
 				this.renderChart(dataset);
@@ -39,28 +39,28 @@ var ChartView = Backbone.View.extend({
 	},
 
 	stopLiveData: function(){
-		this.dataCache.stopPolling()
+		this.dataQuery.stopPolling()
 			.off('new-data')
 	},
 
 	setLatestData: function(){
-		this.dataCache.getLatestDataWindow()
+		this.dataQuery.getLatestDataWindow()
 			.done(_.bind(this.renderChart, this));
 	},
 
 	setPreviousData: function(){
-		this.dataCache.getPreviousDataWindow()
+		this.dataQuery.getPreviousDataWindow()
 			.done(_.bind(this.renderChart, this));
 	},
 
 	setNextData: function(){
-		this.dataCache.getNextDataWindow()
+		this.dataQuery.getNextDataWindow()
 			.done(_.bind(this.renderChart, this));
 	},
 
 	setDataFromDateRange: function(starDate, endDate){
-		this.dataCache.stopPolling();
-		this.dataCache.getData(new Date(starDate), new Date(endDate), 1)
+		this.dataQuery.stopPolling();
+		this.dataQuery.getData(new Date(starDate), new Date(endDate), 1)
 			.done(_.bind(this.renderChart, this));
 	}
 

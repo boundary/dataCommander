@@ -3,40 +3,79 @@ var expect = chai.expect;
 describe('Data cache', function() {
 
 	var dataAPI, cache;
-	var dataAPIOptions, dataCacheOptions;
-	before(function() {
+	var dataAPIOptions;
+	beforeEach(function() {
 		var now = new Date().setMilliseconds(0);
 		dataAPIOptions = {
-			startEpoch: d3.time.second.offset(now, -30).getTime(),
-			endEpoch: now
+			startEpoch: 1420592200000,
+			endEpoch: 1420592207000
 		};
 		dataAPI = dataAPIFake(dataAPIOptions);
 
-		dataCacheOptions = {
-			timeSpanInSeconds: 10
-		};
-		cache = dataCache(dataAPI, dataCacheOptions);
+		cache = dataCache();
 	});
 
-	it('doesn\'t query if the data is cached', function(done){
-		var now = new Date().setMilliseconds(0);
-		var startEpoch = d3.time.second.offset(now, -30).getTime();
-		var endEpoch = d3.time.second.offset(now, -25).getTime();
-
-		var spy = sinon.spy(dataAPI, 'getData');
-
-		$.when(
-			cache.getData(startEpoch, endEpoch),
-			cache.getData(startEpoch, endEpoch)
-		).done(function(dataset){
-				expect(dataset).not.to.be.null;
-				expect(dataset[0].values[0].x).not.to.be.null;
-				expect(dataset[0].values[0].y).not.to.be.null;
-
-				expect(spy.calledOnce).to.be.true;
+	it('sets some data', function(done){
+		var startEpoch = 1420592201000;
+		var endEpoch = 1420592203000;
+		dataAPI.getData(startEpoch, endEpoch)
+			.done(function(dataset){
+				cache.addData(dataset);
+				var allCacheData = cache.getAllData();
+				expect(dataset).to.eql(allCacheData);
 				done();
 			});
+	});
 
+	it('merges data', function(done){
+		var startEpoch = 1420592205000;
+		var endEpoch = 1420592207000;
+
+		dataAPI.getData(startEpoch, endEpoch)
+			.then(function(dataset){
+				// initialize
+				cache.addData(dataset);
+				var allCacheData = cache.getAllData();
+				expect(dataset).to.eql(allCacheData);
+
+				startEpoch = 1420592203000;
+				endEpoch = 1420592205000;
+				return dataAPI.getData(startEpoch, endEpoch);
+			})
+			.then(function(dataset){
+				// merge contiguous dates
+				cache.addData(dataset);
+				var allCacheData = cache.getAllData();
+				var cacheDates = allCacheData[0].values.map(function(d){ return d.x; });
+				expect(cacheDates).to.eql([
+					1420592203000,
+					1420592204000,
+					1420592205000,
+					1420592206000,
+					1420592207000
+				]);
+
+				startEpoch = 1420592200000;
+				endEpoch = 1420592201000;
+				return dataAPI.getData(startEpoch, endEpoch);
+			})
+			.then(function(dataset){
+				// merge non-contiguous dates
+				cache.addData(dataset);
+				var allCacheData = cache.getAllData();
+				var cacheDates = allCacheData[0].values.map(function(d){ return d.x; });
+				expect(cacheDates).to.eql([
+					1420592200000,
+					1420592201000,
+					1420592203000,
+					1420592204000,
+					1420592205000,
+					1420592206000,
+					1420592207000
+				]);
+
+				done();
+			});
 	});
 
 });

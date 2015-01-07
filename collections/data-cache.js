@@ -1,47 +1,38 @@
-var dataCache = function(dataApi, options){
-	var options = options;
+var dataCache = function(){
 	var cache = [];
-	if(!options.timeSpanInSeconds){
-		options.timeSpanInSeconds = 10;
-	}
 
-	var query = dataQuery(dataApi, options);
-
-	var startPolling = function(){
-		return query.startPolling();
-	};
-
-	var stopPolling = function(){
-		return query.stopPolling();
-	};
-
-	var getLatestDataWindow = function(){
-		return query.getLatestDataWindow();
-	};
-
-	var getEarliestDataWindow = function(){
-		return query.getEarliestDataWindow();
-	};
-
-	var getPreviousDataWindow = function(){
-		return query.getPreviousDataWindow();
-	};
-
-	var getNextDataWindow = function(){
-		return query.getNextDataWindow();
+	var addData = function(dataset){
+		var cacheNames = cache.map(function(d){ return d.name; });
+		dataset.forEach(function(data){
+			var cacheNameIndex = cacheNames.indexOf(data.name);
+			if(cacheNameIndex === -1){
+				cache.push({name: data.name, values: data.values});
+			}
+			else{
+				cache[cacheNameIndex].values = _.chain(cache[cacheNameIndex].values)
+					.union(data.values)
+					.sortBy(function(d){ return d.x; })
+					.value();
+			}
+		});
 	};
 
 	var getData = function(startEpoch, endEpoch){
-		return query.getData(startEpoch, endEpoch);
+
+	};
+
+	var hasData = function(startEpoch, endEpoch){
+
+	};
+
+	var getAllData = function(){
+		return cache;
 	};
 
 	return{
-		startPolling: startPolling,
-		stopPolling: stopPolling,
-		getLatestDataWindow: getLatestDataWindow,
-		getEarliestDataWindow: getEarliestDataWindow,
-		getPreviousDataWindow: getPreviousDataWindow,
-		getNextDataWindow: getNextDataWindow,
-		getData: getData
+		addData: addData,
+		getData: getData,
+		hasData: hasData,
+		getAllData: getAllData
 	};
 };
