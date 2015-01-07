@@ -107,18 +107,22 @@ describe('Data query', function() {
 			});
 	});
 
-	it.skip('starts polling', function(done){
-	//TODO: use sinon fakeTimer
+	it('starts polling', function(done){
+		var now = new Date().setMilliseconds(0);
+		var clock = sinon.useFakeTimers(now);
 		var count = 0;
 		query.getLatestDataWindow();
 		query.startPolling(1000)
 			.on('new-data', function(e, dataset){
 				if(count++ === 1){
-					expect(dataset).not.to.be.null;
+					var dates = dataset[0].values.map(function(d){ return d.x; });
+					expect(dates[dates.length-1]).to.equal(d3.time.second.offset(now, 2).getTime());
 					query.stopPolling();
 					done();
 				}
 			});
+		clock.tick(2000);
+		clock.restore();
 	});
 
 });

@@ -2,8 +2,7 @@ var expect = chai.expect;
 
 describe('Data stub', function() {
 
-	var api;
-	var options;
+	var api, options;
 	beforeEach(function() {
 		var now = new Date().setMilliseconds(0);
 		options = {
@@ -37,7 +36,8 @@ describe('Data stub', function() {
 			});
 	});
 
-	it.skip('continuously generates points', function(done){
+	it('continuously generates points', function(done){
+		var clock = sinon.useFakeTimers(options.endEpoch);
 		setTimeout(function(){
 			var now = new Date().setMilliseconds(0);
 			api.getData(options.startEpoch, now)
@@ -48,6 +48,8 @@ describe('Data stub', function() {
 					done();
 				});
 		}, 1000);
+		clock.tick(1000);
+		clock.restore();
 	});
 
 	it('gives the latest and earliest epoch', function(){
