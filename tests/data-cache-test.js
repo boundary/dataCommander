@@ -5,12 +5,11 @@ describe('Data cache', function() {
 	var dataAPI, cache;
 	var dataAPIOptions;
 	beforeEach(function() {
-		var now = new Date().setMilliseconds(0);
 		dataAPIOptions = {
 			startEpoch: 1420592200000,
 			endEpoch: 1420592207000
 		};
-		dataAPI = dataAPIFake(dataAPIOptions);
+		dataAPI = dataQueryFake(dataAPIOptions);
 
 		cache = dataCache();
 	});

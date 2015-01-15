@@ -9,7 +9,7 @@ describe('Data stub', function() {
 			startEpoch: d3.time.second.offset(now, -10).getTime(),
 			endEpoch: now
 		};
-		api = dataAPIFake(options);
+		api = dataQueryFake(options);
 	});
 
 	it('provides a dataset', function(done){

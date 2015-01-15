@@ -1,4 +1,4 @@
-var dataAPIFake = function(_options){
+var dataQueryFake = function(_options){
 
 	var fakeDB = null;
 

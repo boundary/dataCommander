@@ -7,9 +7,10 @@
 	<script type="text/javascript" src="libs/backbone.js"></script>
 	<script type="text/javascript" src="libs/d3.js"></script>
 	<script type="text/javascript" src="models/chart-model.js"></script>
-	<script type="text/javascript" src="collections/data-api-fake.js"></script>
+	<script type="text/javascript" src="collections/data-query-fake.js"></script>
 	<script type="text/javascript" src="collections/data-cache.js"></script>
-	<script type="text/javascript" src="collections/data-query.js"></script>
+	<script type="text/javascript" src="collections/data-cache-manager.js"></script>
+	<script type="text/javascript" src="collections/data-query-manager.js"></script>
 	<script type="text/javascript" src="components/firespray-0.1.2.js"></script>
 	<script type="text/javascript" src="views/chart-view.js"></script>
 	<link rel="stylesheet" type="text/css" href="style1.css">
@@ -74,9 +75,7 @@ var dataAPIOptions = {
 	startEpoch: d3.time.second.offset(now, -500).getTime(),
 	endEpoch: now
 };
-var dataAPI = dataAPIFake(dataAPIOptions);
-
-var cache = dataCache();
+var dataAPI = dataQueryFake(dataAPIOptions);
 
 var sourceColors = {
 	'source-0': 'orange',
@@ -99,7 +98,7 @@ var mainChartModel = new ChartModel({
 var queryOptions = {
 	timeSpanInSeconds: 10
 };
-var mainChartDataQuery = dataQuery(dataAPI, cache, queryOptions);
+var mainChartDataQuery = dataQueryManager(dataAPI, queryOptions);
 
 var mainChartView = new ChartView({
 		model: mainChartModel,
@@ -121,7 +120,7 @@ var timelineChartModel = new ChartModel({
 		useBrush: true
 	});
 
-var timelineDataQuery = dataQuery(dataAPI, cache, queryOptions);
+var timelineDataQuery = dataQueryManager(dataAPI, queryOptions);
 
 var timelineChartView = new ChartView({
 		model: timelineChartModel,

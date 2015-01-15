@@ -2,7 +2,7 @@ var expect = chai.expect;
 
 describe('Data query', function() {
 
-	var dataAPI, query, cache;
+	var dataAPI, query;
 	var dataAPIOptions, queryOptions;
 
 	beforeEach(function(){
@@ -11,14 +11,12 @@ describe('Data query', function() {
 			startEpoch: d3.time.second.offset(now, -30).getTime(),
 			endEpoch: now
 		};
-		dataAPI = dataAPIFake(dataAPIOptions);
-
-		cache = dataCache();
+		dataAPI = dataQueryFake(dataAPIOptions);
 
 		queryOptions = {
 			timeSpanInSeconds: 10
 		};
-		query = dataQuery(dataAPI, cache, queryOptions);
+		query = dataQueryManager(dataAPI, queryOptions);
 	});
 
 	afterEach(function(){

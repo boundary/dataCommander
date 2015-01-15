@@ -1,4 +1,4 @@
-var dataQuery = function(_dataAPI, _options){
+var dataQueryManager = function(_dataAPI, _options){
 
 	var dataAPI = _dataAPI;
 	var options = _options;

@@ -6,9 +6,10 @@
 	<script type="text/javascript" src="../libs/jquery-2.0.0.js"></script>
 	<script type="text/javascript" src="../libs/underscore.js"></script>
 	<script type="text/javascript" src="../libs/d3.js"></script>
-	<script type="text/javascript" src="../collections/data-api-fake.js"></script>
+	<script type="text/javascript" src="../collections/data-query-manager.js"></script>
+	<script type="text/javascript" src="../collections/data-query-fake.js"></script>
+	<script type="text/javascript" src="../collections/data-cache-manager.js"></script>
 	<script type="text/javascript" src="../collections/data-cache.js"></script>
-	<script type="text/javascript" src="../collections/data-query.js"></script>
 	<link rel="stylesheet" href="mocha/mocha.css" />
   </head>
   <body>
@@ -18,9 +19,10 @@
 	<script src="mocha/sinon-1.12.2.js"></script>
 	<script src="mocha/mocha.js"></script>
 	<script>mocha.setup('bdd')</script>
-	<script src="data-api-fake-test.js"></script>
-	<script src="data-query-test.js"></script>
+	<script src="data-query-fake-test.js"></script>
+	<script src="data-query-manager-test.js"></script>
 	<script src="data-cache-test.js"></script>
+	<script src="data-cache-manager-test.js"></script>
 	<script>
 	  mocha.run();
 	</script>
