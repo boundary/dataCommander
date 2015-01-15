@@ -18,11 +18,47 @@ var dataCache = function(){
 	};
 
 	var getData = function(startEpoch, endEpoch){
+		var filteredCache = [];
 
+		cache.forEach(function(data){
+			filteredCache.push({
+				name: data.name,
+				values: data.values.filter(function(d){
+					return d.x >= startEpoch && d.x <= endEpoch;
+				})
+			});
+		});
+
+		return filteredCache;
 	};
 
-	var hasData = function(startEpoch, endEpoch){
+	var getEpochRangeNotInCache = function(startEpoch, endEpoch){
+		var epochRanges = {};
 
+		cache.forEach(function(data){
+			var epochs = data.values.map(function(d, i){ return d.x; });
+			var earliestEpoch = epochs[0];
+			var latestEpoch = epochs[epochs.length-1];
+			epochRanges.name = data.name;
+			epochRanges.startEpoch = null;
+			epochRanges.endEpoch = null;
+			// FIXME ignore the cached range if cache is totally included
+			// (to prevent having to query 2 ranges and stitch for now)
+			if(startEpoch < earliestEpoch && endEpoch > latestEpoch){
+				epochRanges.startEpoch = startEpoch;
+				epochRanges.endEpoch = endEpoch;
+			}
+			else if(startEpoch < earliestEpoch){
+				epochRanges.startEpoch = startEpoch;
+				epochRanges.endEpoch = d3.time.second.offset(earliestEpoch, -1).getTime();
+			}
+			else if(endEpoch > latestEpoch){
+				epochRanges.startEpoch = d3.time.second.offset(latestEpoch, +1).getTime();;
+				epochRanges.endEpoch = endEpoch;
+			}
+		});
+
+		return epochRanges;
 	};
 
 	var getAllData = function(){
@@ -32,7 +68,7 @@ var dataCache = function(){
 	return{
 		addData: addData,
 		getData: getData,
-		hasData: hasData,
+		getEpochRangeNotInCache: getEpochRangeNotInCache,
 		getAllData: getAllData
 	};
 };

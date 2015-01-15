@@ -1,7 +1,6 @@
-var dataQuery = function(_dataAPI, _dataCache, _options){
+var dataQuery = function(_dataAPI, _options){
 
 	var dataAPI = _dataAPI;
-	var dataCache = _dataCache;
 	var options = _options;
 	if(!options.timeSpanInSeconds){
 		options.timeSpanInSeconds = 10;
