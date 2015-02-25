@@ -1,10 +1,12 @@
 var firespray = {
-    version: "0.1.2"
+    version: "0.1.3"
 };
 
-firespray.chart = function module() {
+var fy = firespray;
+
+fy.chart = function module() {
     var that = this;
-    var config = firespray.utils.cloneJSON(firespray.defaultConfig);
+    var config = fy.utils.cloneJSON(fy.defaultConfig);
     var cache = {
         data: [],
         root: null,
@@ -12,7 +14,7 @@ firespray.chart = function module() {
         axesSvg: null,
         geometryCanvas: null,
         geometrySVG: null,
-        scaleX: d3.time.scale(),
+        scaleX: d3.scale.linear(),
         scaleY: d3.scale.linear(),
         isMirror: null,
         axisXHeight: null,
@@ -22,33 +24,20 @@ firespray.chart = function module() {
         zoomedExtentX: null,
         theme: null,
         brush: null,
-        queues: []
+        queues: [],
+        biggestY: null
     };
-    var dispatch = d3.dispatch("brushChange", "brushDragStart", "brushDragMove", "brushDragEnd", "geometryHover", "geometryOut", "geometryClick", "chartHover", "chartOut", "chartEnter");
-    this.cache = cache;
-    this.config = config;
-    this.dispatch = dispatch;
+    cache.dispatch = d3.dispatch("brushChange", "brushDragStart", "brushDragMove", "brushDragEnd", "geometryHover", "geometryOut", "geometryClick", "chartHover", "chartOut", "chartEnter", "mouseDragMove", "mouseWheelScroll");
+    var pipeline = fy.utils.pipeline(fy.setupContainers, fy.setupBrush, fy.setupScales, fy.setupAxisY, fy.setupAxisX, fy.setupHovering, fy.setupStripes, fy.setupGeometries);
     var exports = {
         render: function() {
-            firespray.setupContainers(config, cache);
-            firespray.setupScales(config, cache);
-            firespray.setupAxisY(config, cache);
-            firespray.setupAxisX(config, cache);
-            firespray.setupBrush(config, cache, dispatch);
-            firespray.setupHovering(config, cache, dispatch);
-            firespray.setupStripes(config, cache);
-            firespray.setupGeometries(config, cache);
+            pipeline(config, cache);
         },
         setData: function(_newData) {
             if (!_newData || _newData.length === 0 || _newData[0].values.length === 0) {
                 return this;
             }
-            cache.data = firespray.utils.cloneJSON(_newData);
-            cache.data.forEach(function(d) {
-                d.values.forEach(function(dB) {
-                    dB.x = new Date(dB.x);
-                });
-            });
+            cache.data = fy.utils.cloneJSON(_newData);
             cache.data.sort(function(a, b) {
                 var x = a.values.length;
                 var y = b.values.length;
@@ -58,61 +47,54 @@ firespray.chart = function module() {
             return this;
         },
         setConfig: function(_newConfig) {
-            firespray.utils.override(_newConfig, config);
+            fy.utils.override(_newConfig, config);
             return this;
         },
         refresh: function() {
-            if (that.convenience.hasValidData(cache)) {
+            if (that.dataUtils.hasValidData(cache)) {
                 this.render();
             }
             return this;
         },
         getDataSlice: function(_sliceExtentX) {
-            var dataSlice = firespray.utils.cloneJSON(cache.data).map(function(d) {
-                d.values = d.values.map(function(dB) {
-                    dB.x = new Date(dB.x);
-                    return dB;
-                }).filter(function(dB) {
-                    return dB.x.getTime() >= _sliceExtentX[0] && dB.x.getTime() <= _sliceExtentX[1];
-                });
-                return d;
-            });
-            return dataSlice;
+            return fy.dataUtils.getDataSlice(cache, _sliceExtentX);
         },
         getDataUnderBrush: function() {
-            return exports.getDataSlice(exports.getBrushExtent());
+            return fy.dataUtils.getDataSlice(cache, fy.graphicUtils.getBrushExtent(cache));
+        },
+        getDataInView: function() {
+            return fy.dataUtils.getDataSlice(cache, exports.getZoomExtent());
         },
         setZoom: function(_newExtent) {
-            config.zoomedExtentX = _newExtent.map(function(d) {
-                return new Date(d);
-            });
+            config.zoomedExtentX = _newExtent;
             this.render();
             return this;
         },
+        getZoomExtent: function() {
+            return fy.graphicUtils.getZoomExtent(cache, config);
+        },
         setBrushSelection: function(_brushSelectionExtent) {
             if (cache.brush) {
-                cache.brushExtent = _brushSelectionExtent.map(function(d) {
-                    return new Date(d);
-                });
+                cache.brushExtent = _brushSelectionExtent;
                 this.render();
             }
             return this;
         },
         setHovering: function(_dateX) {
-            if (!firespray.convenience.hasValidData(cache)) {
+            if (!fy.dataUtils.hasValidData(cache)) {
                 return;
             }
             var hoverPosX = cache.scaleX(_dateX);
-            var closestPointsScaledX = firespray._hovering.injectClosestPointsFromX(hoverPosX, config, cache);
+            var closestPointsScaledX = fy._hovering.injectClosestPointsFromX(hoverPosX, config, cache);
             cache.interactionSvg.select(".hover-group").style({
                 visibility: "visible"
             });
             if (typeof closestPointsScaledX !== "undefined") {
-                firespray._hovering.displayHoveredGeometry(config, cache, dispatch);
-                firespray._hovering.displayVerticalGuide(closestPointsScaledX, config, cache);
+                fy._hovering.displayHoveredGeometry(config, cache);
+                fy._hovering.displayVerticalGuide(closestPointsScaledX, config, cache);
             } else {
-                firespray._hovering.hideHoveredGeometry(config, cache, dispatch);
-                firespray._hovering.displayVerticalGuide(hoverPosX, config, cache);
+                fy._hovering.hideHoveredGeometry(config, cache);
+                fy._hovering.displayVerticalGuide(hoverPosX, config, cache);
             }
             return this;
         },
@@ -122,21 +104,19 @@ firespray.chart = function module() {
             }
         },
         getBrushExtent: function() {
-            if (cache.brush.extent()) {
-                return cache.brush.extent().map(function(d) {
-                    return d.getTime();
-                });
-            }
+            return fy.graphicUtils.getBrushExtent(cache);
         },
         getDataExtent: function() {
-            if (cache.extentX && cache.extentX) {
-                return {
-                    x: cache.extentX.map(function(d) {
-                        return d.getTime();
-                    }),
-                    y: cache.extentY
-                };
-            }
+            return {
+                x: fy.dataUtils.computeExtent(cache, "x"),
+                y: fy.dataUtils.computeExtent(cache, "y")
+            };
+        },
+        getDataPointCount: function() {
+            return cache.data[0].values.length;
+        },
+        getDataPointCountInView: function() {
+            return fy.dataUtils.getDataSlice(this.getZoomExtent())[0].values.length;
         },
         getSvgNode: function() {
             if (cache.bgSvg) {
@@ -159,22 +139,28 @@ firespray.chart = function module() {
                     width: config.container.clientWidth,
                     height: config.container.clientHeight
                 }).refresh();
+                fy.utils.override({
+                    width: config.container.clientWidth,
+                    height: config.container.clientHeight
+                });
+                this.refresh();
             }
             return this;
         }
     };
-    d3.rebind(exports, dispatch, "on");
+    d3.rebind(exports, cache.dispatch, "on");
     return exports;
 };
 
-firespray.defaultConfig = {
+fy.defaultConfig = {
+    scaleX: "time",
     width: 500,
     height: 300,
     margin: {
-        top: 0,
-        right: 0,
-        bottom: 0,
-        left: 0
+        top: 20,
+        right: 20,
+        bottom: 20,
+        left: 20
     },
     container: null,
     showTicksX: false,
@@ -183,14 +169,15 @@ firespray.defaultConfig = {
     useBrush: false,
     suggestedXTicks: 10,
     suggestedYTicks: null,
-    timeFormat: d3.time.format("%H:%M:%S"),
+    tickFormatX: "%H:%M:%S",
     axisXHeight: 20,
+    axisYWidth: 0,
     isMirror: null,
     dotSize: 4,
     suffix: "",
     stripeWidthInSample: 1,
     tickFormatY: null,
-    labelYOffset: 10,
+    labelYOffset: 0,
     axisYStartsAtZero: true,
     showStripes: true,
     geometryType: "line",
@@ -205,7 +192,7 @@ firespray.defaultConfig = {
     theme: null
 };
 
-firespray.utils = {
+fy.utils = {
     override: function(_objA, _objB) {
         for (var x in _objA) {
             if (x in _objB) {
@@ -218,11 +205,13 @@ firespray.utils = {
     },
     throttle: function throttle(callback, limit, b) {
         var wait = false;
+        var timer = null;
         return function(a, b) {
             if (!wait) {
                 callback.apply(this, arguments);
                 wait = true;
-                setTimeout(function() {
+                clearTimeout(timer);
+                timer = setTimeout(function() {
                     wait = false;
                 }, limit);
             }
@@ -239,6 +228,18 @@ firespray.utils = {
         }
         return destination;
     },
+    pipeline: function() {
+        var fns = arguments;
+        return function(config, cache) {
+            for (var i = 0; i < fns.length; i++) {
+                cache = fns[i].call(this, config, cache);
+            }
+            return cache;
+        };
+    }
+};
+
+fy.dataUtils = {
     generateDataPoint: function(options, i) {
         var point = {
             x: options.epoch,
@@ -256,22 +257,19 @@ firespray.utils = {
         return {
             values: d3.range(pointCount).map(function(dB, iB) {
                 options.epoch += 1e3;
-                return firespray.utils.generateDataPoint(options);
+                return fy.dataUtils.generateDataPoint(options);
             }),
             color: colors[i % (colors.length - 1)],
             name: "line i"
         };
     },
     generateData: function(options) {
-        options.startEpoch = new Date().getTime();
+        options.startEpoch = new Date().setMilliseconds(0);
         var lineCount = options.lineCount || 5;
         return d3.range(lineCount).map(function(d, i) {
-            return firespray.utils.generateDataLine(options, i);
+            return fy.dataUtils.generateDataLine(options, i);
         });
-    }
-};
-
-firespray.convenience = {
+    },
     hasValidData: function(cache) {
         return cache.data && cache.data.length !== 0 && cache.data[0].values.length !== 0;
     },
@@ -282,39 +280,97 @@ firespray.convenience = {
             return false;
         }
     },
-    computeExtent: function(_data, _axis) {
-        return d3.extent(d3.merge(_data.map(function(d) {
+    computeExtent: function(cache, _axis) {
+        return d3.extent(d3.merge(cache.data.map(function(d) {
             return d.values.map(function(dB) {
                 return dB[_axis];
             });
         })));
+    },
+    getDataSlice: function(cache, _sliceExtentX) {
+        var dataSlice = fy.utils.cloneJSON(cache.data).map(function(d) {
+            d.values = d.values.filter(function(dB) {
+                return dB.x >= _sliceExtentX[0] && dB.x <= _sliceExtentX[1];
+            });
+            return d;
+        });
+        return dataSlice;
     }
 };
 
-firespray.setupHovering = function(config, cache, dispatch) {
-    if (config.useBrush) {
-        return this;
+fy.graphicUtils = {
+    getBrushExtent: function(cache) {
+        if (cache.brush.extent()) {
+            return cache.brush.extent().map(function(d) {
+                return d.getTime();
+            });
+        }
+    },
+    sampleWidthInPx: function(cache) {
+        return cache.scaleX(cache.data[0].values[2].x) - cache.scaleX(cache.data[0].values[1].x);
+    },
+    getZoomExtent: function(cache, config) {
+        return config.zoomedExtentX || fy.dataUtils.computeExtent(cache, "x");
+    }
+};
+
+fy.setupHovering = function(config, cache) {
+    if (config.useBrush || typeof cache.interactionSvg.select(".hover-rect").on("mousemove") === "function") {
+        return cache;
     }
     var that = this;
-    cache.interactionSvg.select(".hover-rect").on("mousemove", function() {
-        if (!firespray.convenience.hasValidData(cache)) {
+    var scrollAccum = 0;
+    var mouseAccum = 0;
+    var zoomSpeed = 10;
+    var panSpeed = 1e3;
+    function computeNewExtent() {
+        var sampleWidthInPx = fy.graphicUtils.sampleWidthInPx(cache);
+        var extentX = fy.dataUtils.computeExtent(cache, "x");
+        var newExtentX = [];
+        newExtentX[0] = extentX[0] - zoomSpeed * scrollAccum - panSpeed * mouseAccum / sampleWidthInPx;
+        newExtentX[1] = extentX[1] + zoomSpeed * scrollAccum - panSpeed * mouseAccum / sampleWidthInPx;
+        if (newExtentX[1] - newExtentX[0] >= 1001) {
+            return newExtentX;
+        } else {
             return;
         }
-        var mouseX = d3.mouse(cache.geometryCanvas.node())[0];
-        var closestPointsScaledX = firespray._hovering.injectClosestPointsFromX(mouseX, config, cache);
+    }
+    var mouseIsPressed = false;
+    document.onmousedown = function() {
+        mouseIsPressed = true;
+    };
+    document.onmouseup = function() {
+        mouseIsPressed = false;
+    };
+    d3.select(document).on("mousewheel", function() {
+        scrollAccum += d3.event.wheelDelta;
+        var newExtentX = computeNewExtent();
+        cache.dispatch.mouseWheelScroll.call(that, newExtentX);
+    });
+    cache.interactionSvg.select(".hover-rect").on("mousemove", function() {
+        if (!fy.dataUtils.hasValidData(cache)) {
+            return;
+        }
+        var mouseX = d3.mouse(this)[0];
+        if (mouseIsPressed) {
+            mouseAccum += d3.event.movementX;
+            var newExtentX = computeNewExtent();
+            cache.dispatch.mouseDragMove.call(that, newExtentX);
+        }
+        var closestPointsScaledX = fy._hovering.injectClosestPointsFromX(mouseX, config, cache);
         cache.interactionSvg.select(".hover-group").style({
             visibility: "visible"
         });
         if (typeof closestPointsScaledX !== "undefined") {
-            firespray._hovering.displayHoveredGeometry(config, cache, dispatch);
-            dispatch.chartHover.call(that, cache.data);
-            firespray._hovering.displayVerticalGuide(closestPointsScaledX, config, cache);
+            fy._hovering.displayHoveredGeometry(config, cache);
+            cache.dispatch.chartHover.call(that, cache.data);
+            fy._hovering.displayVerticalGuide(closestPointsScaledX, config, cache);
         } else {
-            firespray._hovering.hideHoveredGeometry(config, cache);
-            firespray._hovering.displayVerticalGuide(mouseX, config, cache);
+            fy._hovering.hideHoveredGeometry(config, cache);
+            fy._hovering.displayVerticalGuide(mouseX, config, cache);
         }
     }).on("mouseenter", function() {
-        dispatch.chartEnter.call(that);
+        cache.dispatch.chartEnter.call(that);
     }).on("mouseout", function() {
         var svg = cache.interactionSvg.node();
         var target = d3.event.relatedTarget;
@@ -322,12 +378,13 @@ firespray.setupHovering = function(config, cache, dispatch) {
             cache.interactionSvg.select(".hover-group").style({
                 visibility: "hidden"
             });
-            dispatch.chartOut.call(that);
+            cache.dispatch.chartOut.call(that);
         }
     }).select(".hover-group");
+    return cache;
 };
 
-firespray._hovering = {
+fy._hovering = {
     injectClosestPointsFromX: function(fromPointX, config, cache) {
         var found = false, closestIndex, closestScaledX;
         cache.data.forEach(function(d) {
@@ -348,14 +405,14 @@ firespray._hovering = {
         });
         return closestScaledX;
     },
-    displayHoveredGeometry: function(config, cache, dispatch) {
+    displayHoveredGeometry: function(config, cache) {
         if (config.geometryType === "bar" || config.geometryType === "percentBar" || config.geometryType === "stackedBar") {
-            firespray._hovering.displayHoveredRects(config, cache, dispatch);
+            fy._hovering.displayHoveredRects(config, cache);
         } else {
-            firespray._hovering.displayHoveredDots(config, cache, dispatch);
+            fy._hovering.displayHoveredDots(config, cache);
         }
     },
-    displayHoveredDots: function(config, cache, dispatch) {
+    displayHoveredDots: function(config, cache) {
         var hoverData = cache.data.map(function(d) {
             return d.closestValue;
         });
@@ -382,11 +439,11 @@ firespray._hovering = {
                 valueY: valueY,
                 containerTop: containerTop
             };
-            dispatch.geometryHover.call(this, e, d);
+            cache.dispatch.geometryHover.call(this, e, d);
         }).on("mouseout", function() {
-            dispatch.geometryOut.call(this);
+            cache.dispatch.geometryOut.call(this);
         }).on("click", function() {
-            dispatch.geometryClick.call(this);
+            cache.dispatch.geometryClick.call(this);
         });
         hoveredDotsSelection.filter(function(d, i) {
             return typeof d !== "undefined" && !isNaN(d.y);
@@ -401,13 +458,13 @@ firespray._hovering = {
             },
             cy: function(d, i) {
                 var scaledY = cache.isMirror && i >= cache.data.length && d.scaledY2 ? d.scaledY2 : d.scaledY;
-                return scaledY + config.margin.top;
+                return scaledY;
             }
         });
         hoveredDotsSelection.exit().remove();
         return this;
     },
-    displayHoveredRects: function(config, cache, dispatch) {
+    displayHoveredRects: function(config, cache) {
         var hoverData = cache.data.map(function(d) {
             return d.closestValue;
         });
@@ -433,11 +490,11 @@ firespray._hovering = {
                 valueY: valueY,
                 containerTop: containerTop
             };
-            dispatch.geometryHover.call(this, e, d);
+            cache.dispatch.geometryHover.call(this, e, d);
         }).on("mouseout", function() {
-            dispatch.geometryOut.call(this);
+            cache.dispatch.geometryOut.call(this);
         }).on("click", function() {
-            dispatch.geometryClick.call(this);
+            cache.dispatch.geometryClick.call(this);
         });
         hoveredDotsSelection.filter(function(d, i) {
             return typeof d !== "undefined" && !isNaN(d.y);
@@ -478,28 +535,29 @@ firespray._hovering = {
     }
 };
 
-firespray.template = "<div>" + '<svg xmlns="http://www.w3.org/2000/svg" class="bg">' + '<g class="chart-group">' + '<g class="background"><rect class="panel-bg" /></g>' + '<g class="axis-y axis-y2"></g><g class="axis-y axis-y1"></g><rect class="axis-x-bg" /><g class="axis-x"></g>' + "</g>" + "</svg>" + '<canvas class="geometry"></canvas>' + '<svg xmlns="http://www.w3.org/2000/svg" class="geometry-svg"></svg>' + '<svg xmlns="http://www.w3.org/2000/svg" class="axes">' + '<g class="chart-group">' + '<g class="axis-x"></g><rect class="axis-y-bg" /><g class="axis-y axis-y2"></g><g class="axis-y axis-y1"></g>' + "</g>" + "</svg>" + '<svg xmlns="http://www.w3.org/2000/svg" class="interaction">' + '<g class="hover-group"><line class="hover-guide-x"/>' + '<rect class="hover-rect" width="100%" height="100%" pointer-events="all" fill="none"/></rect>' + '</g><g class="brush-group"></g>' + "</svg>" + "</div>";
+fy.template = "<div>" + '<svg xmlns="http://www.w3.org/2000/svg" class="bg">' + '<g class="chart-group">' + '<g class="background"><rect class="panel-bg" /></g>' + '<g class="axis-y axis-y2"></g><g class="axis-y axis-y1"></g><rect class="axis-x-bg" /><g class="axis-x"></g>' + "</g>" + "</svg>" + '<canvas class="geometry"></canvas>' + '<svg xmlns="http://www.w3.org/2000/svg" class="geometry-svg"></svg>' + '<svg xmlns="http://www.w3.org/2000/svg" class="axes">' + '<g class="chart-group">' + '<g class="axis-x"></g><rect class="axis-y-bg" /><g class="axis-y axis-y2"></g><g class="axis-y axis-y1"></g>' + "</g>" + "</svg>" + '<svg xmlns="http://www.w3.org/2000/svg" class="interaction">' + '<g class="hover-group"><line class="hover-guide-x"/>' + '<rect class="hover-rect" width="100%" height="100%" pointer-events="all" fill="none"/></rect>' + '</g><g class="brush-group"></g>' + "</svg>" + "</div>";
 
-firespray.themes = {
-    "default": ".firespray-chart .axis-x-bg {fill: rgba(220, 220, 220, 1); }" + ".firespray-chart .axis-y-bg {fill: rgba(220, 220, 220, 0.5);}" + ".firespray-chart .extent {fill: rgba(200, 200, 200, .5); stroke: rgba(255, 255, 255, .5); }" + ".firespray-chart .stripe { fill: none; }" + ".firespray-chart .stripe.even { fill: rgb(250, 250, 250); }" + ".firespray-chart .panel-bg { fill: white; }" + ".firespray-chart .axis-y line { stroke: #eee; }" + ".firespray-chart  text { font-size: 10px; fill: #aaa; }" + ".firespray-chart  .hovered-geometry, .hover-guide-x{ stroke: #555; }" + ".firespray-chart  .domain{ display: none}",
-    dark: ".firespray-chart .axis-x-bg {fill: #222; }" + ".firespray-chart .axis-y-bg {fill: rgba(50, 50, 50, 0.5);}" + ".firespray-chart .extent {fill: rgba(200, 200, 200, .5); stroke: rgba(255, 255, 255, .5); }" + ".firespray-chart .stripe { fill: #222; }" + ".firespray-chart .panel-bg { fill: #333; }" + ".firespray-chart .axis-y line { stroke: #111; }" + ".firespray-chart  text { font-size: 10px; fill: #aaa; }" + ".firespray-chart  .hovered-geometry, .hover-guide-x{ stroke: #555; }" + ".firespray-chart  .domain{ display: none}"
+fy.themes = {
+    "default": ".fy-chart .axis-x-bg {fill: white; }" + ".fy-chart .axis-y-bg {fill: rgba(220, 220, 220, 0.5);}" + ".fy-chart .extent {fill: rgba(200, 200, 200, .5); stroke: rgba(255, 255, 255, .5); }" + ".fy-chart .stripe { fill: none; }" + ".fy-chart .stripe.even { fill: rgb(250, 250, 250); }" + ".fy-chart .panel-bg { fill: white; }" + ".fy-chart .axis-y line { stroke: #eee; }" + ".fy-chart  text { font-size: 10px; fill: #aaa; }" + ".fy-chart  .hovered-geometry, .hover-guide-x{ stroke: #555; }" + ".fy-chart  .domain{ display: none}",
+    dark: ".fy-chart .axis-x-bg {fill: #222; }" + ".fy-chart .axis-y-bg {fill: rgba(50, 50, 50, 0.5);}" + ".fy-chart .extent {fill: rgba(200, 200, 200, .5); stroke: rgba(255, 255, 255, .5); }" + ".fy-chart .stripe { fill: none; }" + ".fy-chart .stripe.even { fill: #222; }" + ".fy-chart .panel-bg { fill: #111; }" + ".fy-chart .axis-y line { stroke: #111; }" + ".fy-chart  text { font-size: 10px; fill: #aaa; }" + ".fy-chart  .hovered-geometry, .hover-guide-x{ stroke: #555; }" + ".fy-chart  .domain{ display: none}"
 };
 
-firespray.setupScales = function(config, cache) {
-    if (!firespray.convenience.hasValidData(cache)) {
-        return;
-    }
+fy.setupScales = function(config, cache) {
     setupScaleX();
     setupScaleY();
     function setupScaleX() {
-        var extentX = config.zoomedExtentX || firespray.convenience.computeExtent(cache.data, "x");
+        var extentX = fy.graphicUtils.getZoomExtent(cache, config);
         cache.scaleX.domain(extentX);
         cache.extentX = extentX;
     }
     function setupScaleY() {
-        var extentY = firespray.convenience.computeExtent(cache.data, "y");
-        if (cache.isMirror !== false && firespray.convenience.hasValidDataY2(cache)) {
-            var extentY2 = firespray.convenience.computeExtent(cache.data, "y2");
+        var extentY = fy.dataUtils.computeExtent(cache, "y");
+        cache.biggestY = "y";
+        if (cache.isMirror !== false && fy.dataUtils.hasValidDataY2(cache)) {
+            var extentY2 = fy.dataUtils.computeExtent(cache, "y2");
+            if (extentY2[1] > extentY[1]) {
+                cache.biggestY = "y2";
+            }
             extentY = [ Math.min(extentY[0], extentY2[0]), Math.max(extentY[1], extentY2[1]) ];
         }
         if (cache.isMirror) {
@@ -524,14 +582,12 @@ firespray.setupScales = function(config, cache) {
             cache.scaleY.domain(cache.extentY);
         }
     }
+    return cache;
 };
 
-firespray.setupAxisX = function(config, cache) {
-    if (!firespray.convenience.hasValidData(cache)) {
-        return;
-    }
+fy.setupAxisX = function(config, cache) {
     if (!config.showAxisX) {
-        return this;
+        return cache;
     }
     var axisXSelection = cache.axesSvg.select(".axis-x");
     axisXSelection.attr({
@@ -540,11 +596,8 @@ firespray.setupAxisX = function(config, cache) {
     var axisX = d3.svg.axis().scale(cache.scaleX).orient("bottom").tickSize(cache.axisXHeight);
     var textH = 12;
     if (config.showLabelsX) {
-        if (typeof config.timeFormat === "function") {
-            axisX.tickFormat(function(d) {
-                return config.timeFormat(d);
-            });
-        }
+        var format = config.scaleX === "linear" ? d3.format(config.tickFormatX) : d3.time.format(config.tickFormatX);
+        axisX.tickFormat(format);
         axisXSelection.call(axisX);
         var textOffset = cache.axisXHeight / 2 + textH / 2;
         axisXSelection.selectAll("text").attr({
@@ -556,7 +609,7 @@ firespray.setupAxisX = function(config, cache) {
             axisXSelection.selectAll("line").remove();
         } else {
             axisXSelection.selectAll("line").attr({
-                y2: cache.axisXHeight / 2
+                y2: cache.axisXHeight / 3
             });
         }
         axisXSelection.select(".domain").style({
@@ -566,25 +619,24 @@ firespray.setupAxisX = function(config, cache) {
     if (config.showGridX) {
         var bgXSelection = cache.bgSvg.select(".axis-x");
         bgXSelection.attr({
-            transform: "translate(" + [ 0, cache.chartH - cache.axisXHeight ] + ")"
+            transform: "translate(" + [ 0, cache.chartH ] + ")"
         });
         bgXSelection.call(axisX);
         bgXSelection.selectAll("text").text(null);
         bgXSelection.selectAll("line").attr({
-            y1: -cache.chartH
+            y1: 0,
+            y2: -cache.chartH
         }).classed("grid-line x", true);
         bgXSelection.select(".domain").style({
             display: "none"
         });
     }
+    return cache;
 };
 
-firespray.setupAxisY = function(config, cache) {
-    if (!firespray.convenience.hasValidData(cache)) {
-        return;
-    }
+fy.setupAxisY = function(config, cache) {
     if (!config.showAxisY) {
-        return this;
+        return cache;
     }
     if (cache.isMirror) {
         cache.scaleY.range([ cache.chartH / 2, 0 ]);
@@ -614,9 +666,9 @@ firespray.setupAxisY = function(config, cache) {
         if (config.showLabelsY) {
             axisContainerY.call(axisY);
             var texts = axisContainerY.selectAll("text").attr({
-                transform: "translate(" + (config.labelYOffset - 2) + ",0)"
+                transform: "translate(" + config.labelYOffset + ",0)"
             }).style({
-                "text-anchor": "start"
+                "text-anchor": config.labelYOffset > 0 ? "start" : "end"
             }).text(function(d) {
                 return parseFloat(d);
             });
@@ -654,29 +706,28 @@ firespray.setupAxisY = function(config, cache) {
         });
         return d3.max(labels);
     }
-    if (config.showTicksY) {
+    if (config.showTicksY && config.labelYOffset > 0) {
         var labels = cache.axesSvg.selectAll(".axis-y1 text, .axis-y2 text");
         var maxLabelW = findMaxLabelWidth(labels);
         var axisYBgW = maxLabelW ? maxLabelW + config.labelYOffset : 0;
-        var axisYBg = cache.axesSvg.select(".axis-y-bg");
-        axisYBg.attr({
+        var axisYBg = cache.axesSvg.select(".axis-y-bg").attr({
             width: axisYBgW,
-            height: cache.chartH,
-            y: config.margin.top
+            height: cache.chartH
         });
     }
     cache.axesSvg.select(".domain").style({
         fill: "none",
         stroke: "none"
     });
+    return cache;
 };
 
-firespray.setupStripes = function(config, cache) {
-    if (!config.showStripes || !firespray.convenience.hasValidData(cache)) {
+fy.setupStripes = function(config, cache) {
+    if (!config.showStripes || !fy.dataUtils.hasValidData(cache)) {
         return this;
     }
-    var stripeW = cache.scaleX(cache.data[0].values[1].x) * config.stripeWidthInSample;
-    var stripCount = Math.ceil(cache.chartW / stripeW);
+    var stripeW = fy.graphicUtils.sampleWidthInPx(cache);
+    var stripCount = Math.round(cache.chartW / stripeW);
     var stripesSelection = cache.bgSvg.select(".background").selectAll("rect.stripe").data(d3.range(stripCount));
     stripesSelection.enter().append("rect").attr({
         "class": "stripe"
@@ -694,15 +745,16 @@ firespray.setupStripes = function(config, cache) {
         stroke: "none"
     });
     stripesSelection.exit().remove();
+    return cache;
 };
 
-firespray.setupBrush = function(config, cache, dispatch) {
+fy.setupBrush = function(config, cache) {
     if (!config.useBrush || cache.brush) {
-        return this;
+        return cache;
     }
     cache.brush = d3.svg.brush();
-    var brushChange = firespray.utils.throttle(dispatch.brushChange, config.brushThrottleWaitDuration);
-    var brushDragMove = firespray.utils.throttle(dispatch.brushDragMove, config.brushThrottleWaitDuration);
+    var brushChange = fy.utils.throttle(cache.dispatch.brushChange, config.brushThrottleWaitDuration);
+    var brushDragMove = fy.utils.throttle(cache.dispatch.brushDragMove, config.brushThrottleWaitDuration);
     cache.brushExtent = cache.brushExtent || cache.scaleX.domain();
     cache.brush.x(cache.scaleX).extent(cache.brushExtent).on("brush", function() {
         brushChange.call(this, cache.brushExtent.map(function(d) {
@@ -716,11 +768,11 @@ firespray.setupBrush = function(config, cache, dispatch) {
             return d.getTime();
         }));
     }).on("brushstart", function() {
-        dispatch.brushDragStart.call(this, cache.brushExtent.map(function(d) {
+        cache.dispatch.brushDragStart.call(this, cache.brushExtent.map(function(d) {
             return d.getTime();
         }));
     }).on("brushend", function() {
-        dispatch.brushDragEnd.call(this, cache.brushExtent.map(function(d) {
+        cache.dispatch.brushDragEnd.call(this, cache.brushExtent.map(function(d) {
             return d.getTime();
         }));
     });
@@ -728,31 +780,39 @@ firespray.setupBrush = function(config, cache, dispatch) {
         height: cache.chartH + cache.axisXHeight,
         y: 0
     });
+    return cache;
 };
 
-firespray.setupContainers = function(config, cache) {
+fy.setupContainers = function(config, cache) {
     if (!config.container) {
         throw "A container is needed";
     }
-    if (!cache.root && config.container) {
-        var container = d3.select(config.container).append("div");
-        container.html(firespray.template);
-        cache.root = container.style({
-            position: "absolute"
-        }).classed("chart firespray-chart", true);
-        cache.bgSvg = cache.root.select("svg.bg");
-        cache.axesSvg = cache.root.select("svg.axes");
-        cache.interactionSvg = cache.root.select("svg.interaction").attr({
-            id: Math.random()
-        });
-        cache.geometryCanvas = cache.root.select("canvas.geometry");
-        cache.geometrySVG = cache.root.select("svg.geometry-svg");
-        cache.root.selectAll("svg, canvas").style({
-            position: "absolute"
-        });
+    if (cache.root) {
+        return cache;
     }
+    var container = d3.select(config.container).append("div");
+    container.html(fy.template);
+    cache.root = container.style({
+        position: "absolute"
+    }).classed("chart fy-chart", true);
+    cache.bgSvg = cache.root.select("svg.bg");
+    cache.axesSvg = cache.root.select("svg.axes");
+    cache.interactionSvg = cache.root.select("svg.interaction").attr({
+        id: Math.random()
+    });
+    cache.geometryCanvas = cache.root.select("canvas.geometry");
+    cache.geometrySVG = cache.root.select("svg.geometry-svg");
+    cache.root.selectAll("svg, canvas").style({
+        position: "absolute"
+    });
+    var scales = {
+        time: d3.time.scale(),
+        linear: d3.scale.linear()
+    };
+    cache.scaleX = scales[config.scaleX];
     cache.axisXHeight = !config.showAxisX || !config.showLabelsX ? 0 : config.axisXHeight;
-    cache.chartW = config.width - config.margin.right - config.margin.left;
+    cache.axisYWidth = !config.showAxisY || !config.showLabelsY ? 0 : config.axisYWidth;
+    cache.chartW = config.width - config.margin.right - config.margin.left - cache.axisYWidth;
     cache.chartH = config.height - config.margin.top - config.margin.bottom - cache.axisXHeight;
     cache.scaleX.range([ 0, cache.chartW ]);
     cache.bgSvg.style({
@@ -764,10 +824,21 @@ firespray.setupContainers = function(config, cache) {
     cache.axesSvg.style({
         height: config.height + "px",
         width: config.width + "px"
+    }).select(".chart-group").attr({
+        transform: "translate(" + [ config.margin.left + cache.axisYWidth, config.margin.top ] + ")"
     });
     cache.interactionSvg.style({
         height: config.height + "px",
         width: config.width + "px"
+    }).select(".hover-group").attr({
+        transform: "translate(" + [ config.margin.left + cache.axisYWidth, config.margin.top ] + ")"
+    });
+    cache.interactionSvg.select(".hover-rect").attr({
+        width: cache.chartW,
+        height: cache.chartH
+    });
+    cache.interactionSvg.select(".brush-group").attr({
+        transform: "translate(" + [ config.margin.left + cache.axisYWidth, config.margin.top ] + ")"
     });
     cache.bgSvg.select(".panel-bg").attr({
         width: cache.chartW,
@@ -779,48 +850,47 @@ firespray.setupContainers = function(config, cache) {
         y: cache.chartH
     });
     if (config.geometryType === "line") {
-        cache.isMirror = typeof config.isMirror === "boolean" ? config.isMirror : this.convenience.hasValidDataY2(cache);
+        cache.isMirror = typeof config.isMirror === "boolean" ? config.isMirror : fy.dataUtils.hasValidDataY2(cache);
     } else {
         cache.isMirror = false;
     }
     if (config.theme !== cache.theme) {
         cache.root.select("style").remove();
-        cache.root.append("style").html(firespray.themes[config.theme]);
+        cache.root.append("style").html(fy.themes[config.theme]);
         cache.theme = config.theme;
     }
+    return cache;
 };
 
-firespray.setupGeometries = function(config, cache) {
-    if (!firespray.convenience.hasValidData(cache)) {
-        return;
-    }
-    firespray._computeGeometryData(config, cache);
+fy.setupGeometries = function(config, cache) {
+    fy._computeGeometryData(config, cache);
     if (config.geometryType === "line" || config.geometryType === "stackedLine" || config.geometryType === "stackedArea") {
-        firespray.setupLineGeometry(config, cache);
+        fy.setupLineGeometry(config, cache);
     } else if (config.geometryType === "bar" || config.geometryType === "percentBar" || config.geometryType === "stackedBar") {
-        firespray.setupBarGeometry(config, cache);
+        fy.setupBarGeometry(config, cache);
     }
+    return cache;
 };
 
-firespray.setupBarGeometry = function(config, cache) {
+fy.setupBarGeometry = function(config, cache) {
     if (config.renderer === "canvas") {
-        firespray._renderBarGeometry(config, cache);
+        fy._renderBarGeometry(config, cache);
     } else {
-        firespray._renderBarGeometrySVG(config, cache);
+        fy._renderBarGeometrySVG(config, cache);
     }
 };
 
-firespray.setupLineGeometry = function(config, cache) {
+fy.setupLineGeometry = function(config, cache) {
     if (config.renderer === "canvas") {
-        firespray._renderLineGeometry(config, cache);
+        fy._renderLineGeometry(config, cache);
     } else if (config.geometryType === "stackedArea") {
-        firespray._renderAreaGeometrySVG(config, cache);
+        fy._renderAreaGeometrySVG(config, cache);
     } else {
-        firespray._renderLineGeometrySVG(config, cache);
+        fy._renderLineGeometrySVG(config, cache);
     }
 };
 
-firespray._computeGeometryData = function(config, cache) {
+fy._computeGeometryData = function(config, cache) {
     if (cache.isMirror) {
         cache.scaleY.range([ cache.chartH / 2, 0 ]);
     } else {
@@ -828,7 +898,7 @@ firespray._computeGeometryData = function(config, cache) {
     }
     var stackedValues = d3.zip.apply(null, cache.data.map(function(d, i) {
         return d.values.map(function(d, i) {
-            return d.y;
+            return d[cache.biggestY];
         });
     }));
     var stackedMaxValues;
@@ -890,7 +960,7 @@ firespray._computeGeometryData = function(config, cache) {
     }
 };
 
-firespray._renderAreaGeometrySVG = function(config, cache) {
+fy._renderAreaGeometrySVG = function(config, cache) {
     cache.geometrySVG.attr({
         width: cache.chartW,
         height: cache.chartH
@@ -921,7 +991,7 @@ firespray._renderAreaGeometrySVG = function(config, cache) {
     });
 };
 
-firespray._renderLineGeometrySVG = function(config, cache) {
+fy._renderLineGeometrySVG = function(config, cache) {
     cache.geometrySVG.attr({
         width: cache.chartW,
         height: cache.chartH
@@ -948,7 +1018,7 @@ firespray._renderLineGeometrySVG = function(config, cache) {
     });
 };
 
-firespray._renderLineGeometry = function(config, cache) {
+fy._renderLineGeometry = function(config, cache) {
     cache.geometryCanvas.attr({
         width: cache.chartW,
         height: cache.chartH
@@ -992,7 +1062,7 @@ firespray._renderLineGeometry = function(config, cache) {
     }
 };
 
-firespray._renderBarGeometrySVG = function(config, cache) {
+fy._renderBarGeometrySVG = function(config, cache) {
     cache.geometrySVG.attr({
         width: cache.chartW,
         height: cache.chartH
@@ -1030,7 +1100,7 @@ firespray._renderBarGeometrySVG = function(config, cache) {
     });
 };
 
-firespray._renderBarGeometry = function(config, cache) {
+fy._renderBarGeometry = function(config, cache) {
     cache.geometryCanvas.attr({
         width: cache.chartW,
         height: cache.chartH

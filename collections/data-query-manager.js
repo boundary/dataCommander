@@ -5,36 +5,44 @@ var dataQueryManager = function(_dataAPI, _options) {
 	if (!options.timeSpanInSeconds) {
 		options.timeSpanInSeconds = 10;
 	}
+
 	var now = new Date().setMilliseconds(0);
 	var state = {
 		startEpoch: d3.time.second.offset(now, -options.timeSpanInSeconds).getTime(),
 		endEpoch: now,
 		resolutionInSeconds: 1
 	};
+
 	var pollingTimer = null;
 
 	var startPolling = function(_interval) {
+		var that = this;
 		var interval = _interval || 1000;
-		stopPolling();
 		var pollingCache = [];
+
+		stopPolling();
+
 		getLatestDataWindow()
 			.done(function(dataset) {
 				pollingCache = dataset;
 			});
 
-		var that = this;
 		pollingTimer = setInterval(function() {
+
 			_shiftInNextDataPoint(pollingCache)
 				.done(function(dataset) {
 					$(that).trigger('new-data', [dataset]);
 					pollingCache = dataset;
 				});
+
 		}, interval);
+
 		return $(this);
 	};
 
 	var stopPolling = function() {
 		clearInterval(pollingTimer);
+
 		return $(this);
 	};
 
@@ -57,6 +65,7 @@ var dataQueryManager = function(_dataAPI, _options) {
 
 	var _shiftInValues = function(_pollingCache, newDataset) {
 		var datasetShifted = JSON.parse(JSON.stringify(_pollingCache));
+
 		_pollingCache.forEach(function(cachedData, i) {
 			var newValues = newDataset[i].values.slice(1);
 			var values = cachedData.values;
@@ -64,6 +73,7 @@ var dataQueryManager = function(_dataAPI, _options) {
 			values = values.concat(newValues);
 			datasetShifted[i].values = values;
 		});
+
 		return datasetShifted;
 	};
 
