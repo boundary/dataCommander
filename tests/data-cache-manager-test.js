@@ -2,7 +2,7 @@ var expect = chai.expect;
 
 describe('Data cache manager', function() {
 
-	var dataAPI, query, cache, cacheManager;
+	var dataAPI, query, cacheManager;
 	var dataAPIOptions, queryOptions;
 
 	beforeEach(function() {
@@ -13,8 +13,7 @@ describe('Data cache manager', function() {
 		};
 		dataAPI = dataQueryFake(dataAPIOptions);
 
-		cache = dataCache();
-		cacheManager = dataCacheManager(cache, dataAPI);
+		cacheManager = dataCacheManager(dataAPI);
 
 		queryOptions = {
 			timeSpanInSeconds: 10

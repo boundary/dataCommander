@@ -1,25 +1,45 @@
-var dataCacheManager = function(_dataCache, _dataQuery) {
-	var dataCache = _dataCache;
-	var dataQuery = _dataQuery;
+var dataCacheManager = (function(_dataCache) {
 
-	var getData = function(startEpoch, endEpoch) {
-		// TODO
-		// if in dataCache get cache
-		// if not, query
-		return _dataQuery.getData(startEpoch, endEpoch);
-	};
+	return function(_dataQuery) {
+		var dataCache = _dataCache();
+		var dataQuery = _dataQuery;
 
-	var getLatestEpoch = function() {
-		return _dataQuery.getLatestEpoch();
-	};
+		var getData = function(startEpoch, endEpoch) {
 
-	var getEarliestEpoch = function() {
-		return _dataQuery.getEarliestEpoch();
-	};
+			var dfd = new jQuery.Deferred();
 
-	return{
-		getData: getData,
-		getLatestEpoch: getLatestEpoch,
-		getEarliestEpoch: getEarliestEpoch
-	};
-};
+			var dataIsInCache = dataCache.hasData(startEpoch, endEpoch);
+
+			if (dataIsInCache) {
+				var dataInCache = dataCache.getData(startEpoch, endEpoch);
+				dfd.resolve(dataInCache);
+			}
+			else {
+
+				dataQuery.getData(startEpoch, endEpoch)
+					.done(function(data) {
+						dfd.resolve(data);
+						dataCache.addData(data);
+					});
+			}
+
+			return dfd.promise();
+		};
+
+		var getLatestEpoch = function() {
+			return dataQuery.getLatestEpoch();
+		};
+
+		var getEarliestEpoch = function() {
+			return dataQuery.getEarliestEpoch();
+		};
+
+		return{
+			getData: getData,
+			getLatestEpoch: getLatestEpoch,
+			getEarliestEpoch: getEarliestEpoch
+		};
+
+	}
+
+})(dataCache);
