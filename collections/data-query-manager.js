@@ -1,8 +1,8 @@
-var dataQueryManager = function(_dataAPI, _options){
+var dataQueryManager = function(_dataAPI, _options) {
 
 	var dataAPI = _dataAPI;
 	var options = _options;
-	if(!options.timeSpanInSeconds){
+	if (!options.timeSpanInSeconds) {
 		options.timeSpanInSeconds = 10;
 	}
 	var now = new Date().setMilliseconds(0);
@@ -13,19 +13,19 @@ var dataQueryManager = function(_dataAPI, _options){
 	};
 	var pollingTimer = null;
 
-	var startPolling = function(_interval){
+	var startPolling = function(_interval) {
 		var interval = _interval || 1000;
 		stopPolling();
 		var pollingCache = [];
 		getLatestDataWindow()
-			.done(function(dataset){
+			.done(function(dataset) {
 				pollingCache = dataset;
 			});
 
 		var that = this;
-		pollingTimer = setInterval(function(){
+		pollingTimer = setInterval(function() {
 			_shiftInNextDataPoint(pollingCache)
-				.done(function(dataset){
+				.done(function(dataset) {
 					$(that).trigger('new-data', [dataset]);
 					pollingCache = dataset;
 				});
@@ -33,12 +33,12 @@ var dataQueryManager = function(_dataAPI, _options){
 		return $(this);
 	};
 
-	var stopPolling = function(){
+	var stopPolling = function() {
 		clearInterval(pollingTimer);
 		return $(this);
 	};
 
-	var _shiftInNextDataPoint = function(_pollingCache){
+	var _shiftInNextDataPoint = function(_pollingCache) {
 		var dfd = new jQuery.Deferred();
 
 		var startEpoch = state.endEpoch;
@@ -47,7 +47,7 @@ var dataQueryManager = function(_dataAPI, _options){
 		state.startEpoch = d3.time.second.offset(endEpoch, -options.timeSpanInSeconds).getTime();
 
 		_queryData(startEpoch, endEpoch)
-			.done(function(dataset){
+			.done(function(dataset) {
 				var datasetShifted = _shiftInValues(_pollingCache, dataset);
 				dfd.resolve(datasetShifted);
 			});
@@ -55,9 +55,9 @@ var dataQueryManager = function(_dataAPI, _options){
 		return dfd.promise();
 	};
 
-	var _shiftInValues = function(_pollingCache, newDataset){
+	var _shiftInValues = function(_pollingCache, newDataset) {
 		var datasetShifted = JSON.parse(JSON.stringify(_pollingCache));
-		_pollingCache.forEach(function(cachedData, i){
+		_pollingCache.forEach(function(cachedData, i) {
 			var newValues = newDataset[i].values.slice(1);
 			var values = cachedData.values;
 			values = values.slice(newValues.length);
@@ -67,7 +67,7 @@ var dataQueryManager = function(_dataAPI, _options){
 		return datasetShifted;
 	};
 
-	var getLatestDataWindow = function(){
+	var getLatestDataWindow = function() {
 		stopPolling();
 
 		var endEpoch = dataAPI.getLatestEpoch();
@@ -78,7 +78,7 @@ var dataQueryManager = function(_dataAPI, _options){
 		return getData(startEpoch, endEpoch);
 	};
 
-	var getEarliestDataWindow = function(){
+	var getEarliestDataWindow = function() {
 		stopPolling();
 
 		var startEpoch = dataAPI.getEarliestEpoch();
@@ -89,12 +89,12 @@ var dataQueryManager = function(_dataAPI, _options){
 		return getData(startEpoch, endEpoch);
 	};
 
-	var getPreviousDataWindow = function(){
+	var getPreviousDataWindow = function() {
 		stopPolling();
 
 		var endEpoch = state.startEpoch;
 		var startEpoch = d3.time.second.offset(endEpoch, -options.timeSpanInSeconds).getTime();
-		if(startEpoch <= dataAPI.getEarliestEpoch()){
+		if (startEpoch <= dataAPI.getEarliestEpoch()) {
 			return getEarliestDataWindow();
 		}
 		state.startEpoch = startEpoch;
@@ -103,12 +103,12 @@ var dataQueryManager = function(_dataAPI, _options){
 		return getData(startEpoch, endEpoch);
 	};
 
-	var getNextDataWindow = function(){
+	var getNextDataWindow = function() {
 		stopPolling();
 
 		var startEpoch = state.endEpoch;
 		var endEpoch = d3.time.second.offset(startEpoch, options.timeSpanInSeconds).getTime();
-		if(endEpoch >= dataAPI.getLatestEpoch()){
+		if (endEpoch >= dataAPI.getLatestEpoch()) {
 			return getLatestDataWindow();
 		}
 		state.startEpoch = startEpoch;
@@ -117,21 +117,21 @@ var dataQueryManager = function(_dataAPI, _options){
 		return getData(startEpoch, endEpoch);
 	};
 
-	var getData = function(startEpoch, endEpoch){
+	var getData = function(startEpoch, endEpoch) {
 		var dfd = new jQuery.Deferred();
 
 		_queryData(startEpoch, endEpoch)
-			.done(_.bind(function(dataset){
+			.done(_.bind(function(dataset) {
 				dfd.resolve(dataset);
 			}, this));
 
 		return dfd.promise();
 	};
 
-	var _queryData = function(startEpoch, endEpoch){
+	var _queryData = function(startEpoch, endEpoch) {
 		return dataAPI.getData(startEpoch, endEpoch);
 	};
-	
+
 	return {
 		startPolling: startPolling,
 		stopPolling: stopPolling,

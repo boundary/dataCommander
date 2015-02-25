@@ -1,6 +1,6 @@
 var ChartModel = Backbone.Model.extend({
 
-	defaults:{
+	defaults: {
 		name: null,
 		width: null,
 		height: null

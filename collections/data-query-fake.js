@@ -1,8 +1,8 @@
-var dataQueryFake = function(_options){
+var dataQueryFake = function(_options) {
 
 	var fakeDB = null;
 
-	var _generateFakeData = function(startEpoch, endEpoch){
+	var _generateFakeData = function(startEpoch, endEpoch) {
 		var lineCount = 3;
 		var resolution = 1;
 		var startDate = new Date(startEpoch);
@@ -11,11 +11,11 @@ var dataQueryFake = function(_options){
 		dateRange.push(endDate);
 		var dataset = [];
 		var newValues;
-		for(var i=0; i<lineCount; i++){
-			newValues = dateRange.map(function(d){
+		for (var i = 0; i < lineCount; i++) {
+			newValues = dateRange.map(function(d) {
 				return {
 					x: d.getTime(),
-					y: ~~(Math.random()*1000)
+					y: ~~(Math.random() * 1000)
 				}
 			});
 			dataset.push({
@@ -28,31 +28,31 @@ var dataQueryFake = function(_options){
 		return dataset;
 	};
 
-	var _getLatestEpochInDB = function(){
-		return (!fakeDB)? null : fakeDB[0].values[fakeDB[0].values.length-1].x;
+	var _getLatestEpochInDB = function() {
+		return (!fakeDB) ? null : fakeDB[0].values[fakeDB[0].values.length - 1].x;
 	};
 
-	var getData = function(_startEpoch, _endEpoch){
+	var getData = function(_startEpoch, _endEpoch) {
 		var latestEpoch = _getLatestEpochInDB();
 		var now = new Date().setMilliseconds(0);
-		var endEpoch = (_endEpoch <= now)? _endEpoch : now;
-		var startEpoch = (_startEpoch < endEpoch)? _startEpoch : endEpoch;
-		if(!fakeDB){
+		var endEpoch = (_endEpoch <= now) ? _endEpoch : now;
+		var startEpoch = (_startEpoch < endEpoch) ? _startEpoch : endEpoch;
+		if (!fakeDB) {
 			fakeDB = _generateFakeData(startEpoch, endEpoch);
 		}
-		else if(endEpoch > latestEpoch){
+		else if (endEpoch > latestEpoch) {
 			var newData = _generateFakeData(d3.time.second.offset(latestEpoch, 1).getTime(), endEpoch);
-			for(var i=0; i<fakeDB.length; i++){
+			for (var i = 0; i < fakeDB.length; i++) {
 				fakeDB[i].values = fakeDB[i].values.concat(newData[i].values);
 			}
 		}
 
 		var filteredDB = [];
-		for(var i=0; i<fakeDB.length; i++){
+		for (var i = 0; i < fakeDB.length; i++) {
 			var data = fakeDB[i];
 			filteredDB[i] = {
 				name: data.name,
-				values: data.values.filter(function(d){
+				values: data.values.filter(function(d) {
 					return d.x >= startEpoch && d.x <= endEpoch;
 				})
 			}
@@ -63,16 +63,16 @@ var dataQueryFake = function(_options){
 		return dfd.promise();
 	};
 
-	var getLatestEpoch = function(){
+	var getLatestEpoch = function() {
 		return new Date().setMilliseconds(0);
 	};
 
-	var getEarliestEpoch = function(){
-		return (!fakeDB)? null : fakeDB[0].values[0].x;
+	var getEarliestEpoch = function() {
+		return (!fakeDB) ? null : fakeDB[0].values[0].x;
 	};
 
 	getData(_options.startEpoch, _options.endEpoch)
-		.done(_.bind(function(dataset){
+		.done(_.bind(function(dataset) {
 			fakeDB = dataset;
 		}, this));
 
