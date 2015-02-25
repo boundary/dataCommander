@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<script type="text/javascript" src="../libs/jquery-2.0.0.js"></script>
+	<script type="text/javascript" src="../libs/underscore.js"></script>
+	<script type="text/javascript" src="../libs/backbone.js"></script>
+	<script type="text/javascript" src="../libs/d3.js"></script>
+	<script type="text/javascript" src="../collections/data-query-fake.js"></script>
+	<script type="text/javascript" src="../collections/data-cache.js"></script>
+	<script type="text/javascript" src="../collections/data-cache-manager.js"></script>
+	<script type="text/javascript" src="../collections/data-query-manager.js"></script>
+	<script type="text/javascript" src="../components/firespray-0.1.2.js"></script>
+	<link rel="stylesheet" type="text/css" href="../style1.css">
+	<title></title>
+	<style>
+		div {
+			padding-bottom: 5px;
+		}
+
+		.main-chart {
+			margin-top: 20px;
+			width: 500px;
+			height: 300px;
+		}
+
+		button {
+			border: 1px solid silver;
+			background-color: white;
+			outline: none;
+		}
+
+		button:hover {
+			background-color: silver;
+		}
+
+		button.play {
+			background-color: lime;
+		}
+	</style>
+</head>
+<body>
+
+<div class="dashboard">
+	<div class="playback">
+		<button class="previous">Previous</button>
+		<button class="live play">Live</button>
+		<button class="next">next</button>
+	</div>
+	<div class="main-chart"></div>
+</div>
+
+<script type="text/javascript">
+
+	// data manager
+
+	var now = new Date().setMilliseconds(0);
+	var dataAPI = dataQueryFake({
+		startEpoch: d3.time.second.offset(now, -500).getTime(),
+		endEpoch: now
+	});
+
+	var dataQuery = dataQueryManager(dataAPI, {timeSpanInSeconds: 10});
+
+	// main chart
+
+	var $mainContainer = $('.dashboard .main-chart');
+
+	var chart = firespray.chart()
+		.setConfig({
+			name: 'Main Chart',
+			width: $mainContainer.width(),
+			height: $mainContainer.height(),
+			container: $mainContainer.get(0),
+			theme: 'default',
+			geometryType: 'line'
+		});
+
+	//TODO in data manager
+	var colors = {
+		'source-0': 'orange',
+		'source-1': 'skyblue',
+		'source-2': 'lime'
+	};
+
+	var renderChart = function(_dataset) {
+		var dataset = _dataset.map(function(d) {
+			d.color = colors[d.name] || 'silver';
+			return d;
+		});
+
+		chart.setData(dataset);
+	};
+
+	dataQuery.getLatestDataWindow()
+		.done(renderChart);
+
+	dataQuery.startPolling()
+		.on('new-data', function(e, dataset) {
+			renderChart(dataset);
+		});
+
+	//playback
+
+	var $playback = $('.playback');
+	var $playbackLive = $('.playback .live');
+
+	$playbackLive.on('click', function() {
+		var isLive = $playbackLive.hasClass('play');
+		if (isLive) {
+			dataQuery.stopPolling()
+				.off('new-data')
+		}
+		else {
+			dataQuery.startPolling()
+				.off('new-data')
+				.on('new-data', function(e, dataset) { //TODO remove e
+					renderChart(dataset);
+				});
+		}
+		$playbackLive.toggleClass('play', !isLive);
+	});
+
+	$playback.find('.previous').on('click', function() {
+		dataQuery.getPreviousDataWindow()
+			.done(renderChart);
+		$playbackLive.toggleClass('play', false);
+	});
+
+	$playback.find('.next').on('click', function() {
+		dataQuery.getNextDataWindow()
+			.done(renderChart);
+		$playbackLive.toggleClass('play', false);
+	});
+
+</script>
+
+</body>
+</html>
