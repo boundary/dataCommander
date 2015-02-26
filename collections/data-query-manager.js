@@ -12,14 +12,17 @@ var dataQueryManager = (function() {
 		var state = {
 			startEpoch: d3.time.second.offset(now, -options.timeSpanInSeconds).getTime(),
 			endEpoch: now,
-			resolutionInSeconds: 1
+			resolutionInSeconds: options.resolution || 1,
+			pollingInterval: 1
 		};
 
 		var pollingTimer = null;
 
 		var startPolling = function(_interval) {
 			var that = this;
-			var interval = _interval || 1000;
+			if (_interval) {
+				state.pollingInterval = _interval;
+			}
 			var pollingCache = [];
 
 			stopPolling();
@@ -37,9 +40,14 @@ var dataQueryManager = (function() {
 						pollingCache = dataset;
 					});
 
-			}, interval);
+			}, state.pollingInterval * 1000);
 
 			return $(this);
+		};
+
+		setOptions = function(_options) {
+			options = _.extend(options, _options);
+			return this;
 		};
 
 		var stopPolling = function() {
@@ -52,7 +60,7 @@ var dataQueryManager = (function() {
 			var dfd = new jQuery.Deferred();
 
 			var startEpoch = state.endEpoch;
-			var endEpoch = d3.time.second.offset(startEpoch, 1).getTime();
+			var endEpoch = d3.time.second.offset(startEpoch, state.resolutionInSeconds).getTime();
 			state.endEpoch = endEpoch;
 			state.startEpoch = d3.time.second.offset(endEpoch, -options.timeSpanInSeconds).getTime();
 
@@ -84,6 +92,7 @@ var dataQueryManager = (function() {
 
 			var endEpoch = dataAPI.getLatestEpoch();
 			var startEpoch = d3.time.second.offset(endEpoch, -options.timeSpanInSeconds).getTime();
+
 			state.startEpoch = startEpoch;
 			state.endEpoch = endEpoch;
 
@@ -123,6 +132,7 @@ var dataQueryManager = (function() {
 			if (endEpoch >= dataAPI.getLatestEpoch()) {
 				return getLatestDataWindow();
 			}
+
 			state.startEpoch = startEpoch;
 			state.endEpoch = endEpoch;
 
@@ -141,7 +151,7 @@ var dataQueryManager = (function() {
 		};
 
 		var _queryData = function(startEpoch, endEpoch) {
-			return dataAPI.getData(startEpoch, endEpoch);
+			return dataAPI.getData(startEpoch, endEpoch, state.resolutionInSeconds);
 		};
 
 		return {

@@ -4,22 +4,22 @@ var dataCacheManager = (function(_dataCache) {
 		var dataCache = _dataCache();
 		var dataQuery = _dataQuery;
 
-		var getData = function(startEpoch, endEpoch) {
+		var getData = function(startEpoch, endEpoch, resolution) {
 
 			var dfd = new jQuery.Deferred();
 
-			var dataIsInCache = dataCache.hasData(startEpoch, endEpoch);
+			var dataIsInCache = dataCache.hasData(startEpoch, endEpoch, resolution);
 
 			if (dataIsInCache) {
-				var dataInCache = dataCache.getData(startEpoch, endEpoch);
+				var dataInCache = dataCache.getData(startEpoch, endEpoch, resolution);
 				dfd.resolve(dataInCache);
 			}
 			else {
 
-				dataQuery.getData(startEpoch, endEpoch)
+				dataQuery.getData(startEpoch, endEpoch, resolution)
 					.done(function(data) {
 						dfd.resolve(data);
-						dataCache.addData(data);
+						dataCache.addData(data, resolution);
 					});
 			}
 

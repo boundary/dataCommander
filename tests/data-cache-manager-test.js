@@ -112,7 +112,7 @@ describe('Data cache manager', function() {
 		var clock = sinon.useFakeTimers(now);
 		var count = 0;
 		query.getLatestDataWindow();
-		query.startPolling(1000)
+		query.startPolling(1)
 			.on('new-data', function(e, dataset) {
 				if (count++ === 1) {
 					var dates = dataset[0].values.map(function(d) { return d.x; });
